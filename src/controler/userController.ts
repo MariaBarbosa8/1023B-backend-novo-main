@@ -1,47 +1,48 @@
-import { Request, Response } from "express";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-import { User } from "./models/User";
-import { jwtSecret } from "../config/jwt.ts";
+// controllers/userController.ts
 
-export const cadastrarUsuario = async (req: Request, res: Response) => {
-  try {
-    const { nome, email, senha, tipo } = req.body;
+import { Request, Response } from 'express';
+import jwt from 'jsonwebtoken';
+import { jwtSecret } from '../config/jwt.js'; // Use a mesma chave!
+import User from '../models/User'; // Assuma seu modelo de usuário Mongoose
 
-    const senhaCriptografada = await bcrypt.hash(senha, 10);
-
-    const novoUsuario = new User({
-      nome,
-      email,
-      senha: senhaCriptografada,
-      tipo: tipo || "user",
-    });
-
-    await novoUsuario.save();
-    res.status(201).json({ mensagem: "Usuário cadastrado com sucesso!" });
-  } catch (error) {
-    res.status(500).json({ erro: "Erro ao cadastrar usuário" });
-  }
-};
+// Use a interface CustomRequest do seu middleware para tipagem correta
+import { JwtPayload } from '../middlewares/auth.middleware.js'; 
 
 export const login = async (req: Request, res: Response) => {
-  try {
     const { email, senha } = req.body;
-    const usuario = await User.findOne({ email });
 
-    if (!usuario) return res.status(404).json({ erro: "Usuário não encontrado" });
+    try {
+        const user = await User.findOne({ email });
 
-    const senhaValida = await bcrypt.compare(senha, usuario.senha);
-    if (!senhaValida) return res.status(401).json({ erro: "Senha incorreta" });
+        // 1. Verificação de credenciais (Ajuste conforme seu modelo)
+        if (!user || !(await user.comparePassword(senha))) {
+            return res.status(401).json({ message: 'Credenciais inválidas.' });
+        }
 
-    const token = jwt.sign(
-      { id: usuario._id, tipo: usuario.tipo },
-      jwtSecret,
-      { expiresIn: "2h" }
-    );
+        // 2. Determinar o TIPO de usuário (Requisito A1)
+        // Assumindo que seu modelo tem um campo booleano 'isAdmin'
+        const userRole: JwtPayload['tipo'] = user.isAdmin ? "admin" : "user"; 
 
-    res.status(200).json({ mensagem: "Login bem-sucedido", token });
-  } catch (error) {
-    res.status(500).json({ erro: "Erro ao fazer login" });
-  }
+        // 3. Criar o payload do token
+        const payload: JwtPayload = {
+            id: user._id.toString(), // Converte Object ID para string
+            tipo: userRole          // <--- CAMPO ESSENCIAL PARA O MIDDLEWARE!
+        };
+
+        // 4. Assinar o token
+        const token = jwt.sign(payload, jwtSecret, {
+            expiresIn: '1d' // Defina o tempo de expiração
+        });
+
+        // 5. Enviar o token e o tipo para o frontend
+        res.json({ 
+            token, 
+            message: 'Login realizado com sucesso!',
+            tipo: userRole // Útil para o frontend
+        });
+
+    } catch (error) {
+        console.error("Erro no login:", error);
+        res.status(500).json({ message: 'Erro interno no servidor.' });
+    }
 };

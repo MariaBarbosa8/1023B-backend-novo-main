@@ -1,10 +1,16 @@
 import express from "express";
-import { listarProdutos, cadastrarProduto } from "../controllers/productController";
-import { autenticar, verificarAdmin } from "../middlewares/authMiddleware";
+// Remova o .js/ts na importação do middleware (se for .ts)
+import { autenticar, verificarAdmin, CustomRequest } from "../middlewares/authMiddleware.js"; 
+// Mude para o nome da função em camelCase, e verifique o caminho da pasta
+import { criarProduto } from "../controler/productController.js"; 
 
 const router = express.Router();
 
-router.get("/", listarProdutos);
-router.post("/", autenticar, verificarAdmin, cadastrarProduto);
+router.post(
+    "/produtos", 
+    autenticar,     
+    verificarAdmin, 
+    criarProduto    // Use o nome corrigido aqui
+);
 
 export default router;
