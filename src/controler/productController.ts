@@ -1,16 +1,15 @@
-import { Request, Response } from "express";
-import { Product } from "../models/Product";
+import express from 'express';
+import { authMiddleware, adminMiddleware } from '../middlewares/authMiddleware.js';
+import * as productController from '../controller/productController.js';
 
-export const listarProdutos = async (req: Request, res: Response) => {
-  const produtos = await Product.find();
-  res.json(produtos);
-};
+const router = express.Router();
 
-export const cadastrarProduto = async (req: Request, res: Response) => {
-  try {
-    const produto = await Product.create(req.body);
-    res.status(201).json(produto);
-  } catch (error) {
-    res.status(500).json({ erro: "Erro ao cadastrar produto" });
-  }
-};
+// Rota pública
+router.get('/', productController.listarProdutos);
+
+// Rotas protegidas apenas para admin - C5
+router.post('/', authMiddleware, adminMiddleware, productController.cadastrarProduto);
+router.put('/:id', authMiddleware, adminMiddleware, productController.editarProduto);
+router.delete('/:id', authMiddleware, adminMiddleware, productController.excluirProduto);
+
+export default router;
