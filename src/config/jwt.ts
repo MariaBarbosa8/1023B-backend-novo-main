@@ -1,0 +1,1 @@
+export const jwtSecret = "segredo_super_seguro";
